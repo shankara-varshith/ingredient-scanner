@@ -19,9 +19,17 @@ export async function POST(req: NextRequest) {
       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
     };
 
-    // Match ingredients (case-insensitive) against our DB
+    if (ingredients.length === 0) {
+      return NextResponse.json({ results: [] });
+    }
+
+    // Match ingredients against our DB (using word boundary to match partial strings like 'Vitamin C' within 'Ascorbic Acid (Vitamin C)')
+    const regexQueries = ingredients.map((name: string) => ({
+      name: { $regex: new RegExp(`\\b${escapeRegExp(name)}\\b`, "i") }
+    }));
+
     const results = await Ingredient.find({
-      name: { $in: ingredients.map((name: string) => new RegExp(`^${escapeRegExp(name)}$`, "i")) },
+      $or: regexQueries
     });
 
     return NextResponse.json({ results });
