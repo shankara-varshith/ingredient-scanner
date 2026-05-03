@@ -15,9 +15,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const escapeRegExp = (string: string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+    };
+
     // Match ingredients (case-insensitive) against our DB
     const results = await Ingredient.find({
-      name: { $in: ingredients.map((name: string) => new RegExp(`^${name}$`, "i")) },
+      name: { $in: ingredients.map((name: string) => new RegExp(`^${escapeRegExp(name)}$`, "i")) },
     });
 
     return NextResponse.json({ results });
