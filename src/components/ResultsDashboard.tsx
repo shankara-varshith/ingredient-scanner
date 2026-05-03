@@ -115,6 +115,25 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
         </Button>
       </div>
 
+      {/* Identified Ingredients Section */}
+      <div className="px-2 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+            Identified Ingredients
+          </h3>
+          <span className="text-sm font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-full">
+            {initialData.ingredients.length} Total
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {initialData.ingredients.map((ing, i) => (
+            <Badge key={i} variant="secondary" className="bg-white/80 text-slate-700 border border-slate-200 shadow-sm px-3 py-1 text-sm font-medium hover:bg-white transition-colors whitespace-normal text-left max-w-full">
+              {ing}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
       {/* Loading & Error States */}
       {loading ? (
         <div className="space-y-6">
