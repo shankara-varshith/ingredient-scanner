@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Camera, Upload, Sparkles, Image as ImageIcon } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Camera, Upload, Sparkles, Image as ImageIcon, X, Aperture } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ScannerProps {
@@ -13,7 +13,69 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  
+  // Camera State
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  }, []);
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  const startCamera = async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment" } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setIsCameraActive(true);
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      setError("Could not access camera. Please allow camera permissions or use file upload.");
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    // Set canvas dimensions to match video stream
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+          stopCamera();
+          processFile(file);
+        }
+      }, "image/jpeg", 0.9);
+    }
+  };
 
   const processFile = async (file: File) => {
     setLoading(true);
@@ -75,15 +137,16 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      {/* Dropzone Area */}
+      {/* Hidden Canvas for Camera Capture */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Main Interaction Area */}
       <div 
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => !loading && fileInputRef.current?.click()}
-        className={`relative overflow-hidden group cursor-pointer bg-white/40 backdrop-blur-3xl p-10 rounded-[2rem] border-2 transition-all duration-500 ease-out shadow-[0_8px_40px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_60px_rgb(0,0,0,0.12)]
-          ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-white/60 hover:border-indigo-300/50'}
-          ${loading ? 'pointer-events-none' : ''}
+        onDragOver={!isCameraActive && !loading ? handleDragOver : undefined}
+        onDragLeave={!isCameraActive && !loading ? handleDragLeave : undefined}
+        onDrop={!isCameraActive && !loading ? handleDrop : undefined}
+        className={`relative overflow-hidden group bg-white/40 backdrop-blur-3xl p-10 rounded-[2rem] border-2 transition-all duration-500 ease-out shadow-[0_8px_40px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_60px_rgb(0,0,0,0.12)]
+          ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-white/60'}
         `}
       >
         {/* Animated Background Mesh */}
@@ -92,7 +155,7 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
         {loading && previewImage ? (
           // Scanning State
           <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
-            <div className="relative w-48 h-48 rounded-2xl overflow-hidden shadow-2xl mb-6">
+            <div className="relative w-48 h-48 rounded-2xl overflow-hidden shadow-2xl mb-6 border border-slate-200">
               <img src={previewImage} alt="Scanning" className="w-full h-full object-cover" />
               {/* Laser Animation */}
               <div className="absolute top-0 left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
@@ -102,9 +165,36 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
               <span className="animate-pulse">AI is reading the label...</span>
             </div>
           </div>
+        ) : isCameraActive ? (
+          // Live Camera State
+          <div className="relative z-10 flex flex-col items-center animate-in zoom-in-95 duration-300">
+            <div className="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden shadow-inner mb-6 border border-slate-200">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                className="w-full h-full object-cover"
+              />
+              <Button 
+                variant="destructive" 
+                size="icon" 
+                className="absolute top-3 right-3 rounded-full opacity-80 hover:opacity-100 shadow-md"
+                onClick={stopCamera}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <Button 
+              onClick={capturePhoto}
+              className="rounded-full px-8 h-14 text-base font-bold shadow-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all hover:scale-105 active:scale-95"
+            >
+              <Aperture className="mr-2 h-6 w-6" /> Take Photo
+            </Button>
+          </div>
         ) : (
-          // Default State
-          <div className="relative z-10 text-center space-y-6">
+          // Default State (Upload or Start Camera)
+          <div className="relative z-10 text-center space-y-6 py-4">
             <div className="mx-auto w-24 h-24 bg-gradient-to-tr from-indigo-100 to-white rounded-3xl flex items-center justify-center text-indigo-600 shadow-[inset_0_2px_10px_rgb(0,0,0,0.05)] transform group-hover:scale-110 transition-transform duration-500">
               <Camera size={40} className="group-hover:text-indigo-500 transition-colors" />
             </div>
@@ -112,15 +202,26 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
             <div>
               <h2 className="text-3xl font-bold text-slate-800 font-[family-name:var(--font-outfit)] tracking-tight">Scan Ingredients</h2>
               <p className="text-slate-500 mt-2 text-base max-w-xs mx-auto">
-                Snap a photo or drag & drop an image of a product label to analyze it.
+                Use your camera, snap a photo, or drop an image of a product label.
               </p>
             </div>
 
-            <Button 
-              className="mt-4 rounded-full px-8 h-12 text-base font-semibold shadow-lg shadow-indigo-500/20 bg-slate-900 hover:bg-slate-800 text-white transition-all hover:scale-105"
-            >
-              <Upload className="mr-2 h-5 w-5" /> Browse Files
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
+              <Button 
+                onClick={startCamera}
+                className="w-full sm:w-auto rounded-full px-8 h-12 text-base font-semibold shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white transition-all hover:-translate-y-0.5"
+              >
+                <Camera className="mr-2 h-5 w-5" /> Use Camera
+              </Button>
+              <div className="text-slate-400 text-sm font-medium">OR</div>
+              <Button 
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full sm:w-auto rounded-full px-8 h-12 text-base font-semibold shadow-sm bg-white border-slate-200 hover:bg-slate-50 text-slate-700 transition-all hover:-translate-y-0.5"
+              >
+                <Upload className="mr-2 h-5 w-5" /> Browse Files
+              </Button>
+            </div>
           </div>
         )}
         
