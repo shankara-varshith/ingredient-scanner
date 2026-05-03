@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Analyze this image, which is a product label. 
@@ -39,7 +39,13 @@ export async function POST(req: NextRequest) {
     ]);
 
     const textResponse = result.response.text();
-    let cleanedJson = textResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    let cleanedJson = textResponse;
+    const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      cleanedJson = jsonMatch[1];
+    } else {
+      cleanedJson = cleanedJson.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    }
 
     const parsedData = JSON.parse(cleanedJson);
 
