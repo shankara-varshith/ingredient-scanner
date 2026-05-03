@@ -59,7 +59,7 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
   // Filtered Results
   const displayedResults = results.filter(r => {
     if (activeTab === "Risks") {
-      return r.riskLevel === "Critical risk" || r.riskLevel === "Moderate concern";
+      return r.riskLevel === "Critical risk" || r.riskLevel === "Moderate concern" || r.riskLevel === "Unknown";
     }
     return r.riskLevel === "Safe / beneficial";
   });
@@ -67,12 +67,14 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
   const getRiskColor = (level: string) => {
     if (level === "Critical risk") return "bg-red-500";
     if (level === "Moderate concern") return "bg-orange-500";
+    if (level === "Unknown") return "bg-slate-400";
     return "bg-emerald-500";
   };
   
   const getBadgeColor = (level: string) => {
     if (level === "Critical risk") return "bg-red-50 text-red-700 border-red-200";
     if (level === "Moderate concern") return "bg-orange-50 text-orange-700 border-orange-200";
+    if (level === "Unknown") return "bg-slate-50 text-slate-700 border-slate-200";
     return "bg-emerald-50 text-emerald-700 border-emerald-200";
   };
 
