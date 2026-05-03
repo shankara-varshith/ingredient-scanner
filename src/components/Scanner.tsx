@@ -95,7 +95,13 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to analyze image. Please ensure it's a clear photo of ingredients.");
+        let errorMsg = "Failed to analyze image. Please ensure it's a clear photo of ingredients.";
+        try {
+          const errData = await response.json();
+          if (errData.details) errorMsg += ` (${errData.details})`;
+          else if (errData.error) errorMsg += ` (${errData.error})`;
+        } catch(e) {}
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();

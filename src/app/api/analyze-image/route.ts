@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -15,7 +17,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Analyze this image, which is a product label. 
@@ -49,6 +51,14 @@ export async function POST(req: NextRequest) {
 
     const textResponse = result.response.text();
     let cleanedJson = textResponse;
+    
+    // Fallback: Remove markdown tags if they are still present
+    const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      cleanedJson = jsonMatch[1];
+    } else {
+      cleanedJson = cleanedJson.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    }
 
     const parsedData = JSON.parse(cleanedJson);
 
@@ -56,7 +66,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Error analyzing image:", error);
     return NextResponse.json(
-      { error: "Failed to analyze image", details: error.message },
+      { error: "Failed to analyze image", details: error.message || error.toString() },
       { status: 500 }
     );
   }
