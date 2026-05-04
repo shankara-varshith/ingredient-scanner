@@ -1,0 +1,205 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:1rem 0}
+.panel{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);overflow:hidden}
+.panel-head{padding:10px 14px;font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-secondary);border-bottom:0.5px solid var(--color-border-tertiary)}
+.json-wrap{padding:12px 14px;overflow-x:auto;max-height:580px;overflow-y:auto}
+pre{font-family:var(--font-mono,'Courier New'),monospace;font-size:11px;line-height:1.7;color:var(--color-text-primary);white-space:pre;tab-size:2}
+.k{color:#0c447c}.v{color:#3b6d11}.n{color:#854f0b}.s{color:#a32d2d}.c{color:var(--color-text-tertiary);font-style:italic}
+@media(prefers-color-scheme:dark){.k{color:#85b7eb}.v{color:#c0dd97}.n{color:#fac775}.s{color:#f09595}}
+
+.preview{padding:14px}
+.ing-row{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;overflow:hidden;margin-bottom:8px;cursor:pointer}
+.ing-row.open .gauge-area{display:block}
+.ing-row.open .chev{transform:rotate(180deg)}
+.ing-top{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.iname{font-weight:500;font-size:13px;color:var(--color-text-primary);flex:1}
+.tag{font-size:10px;font-weight:500;padding:2px 8px;border-radius:100px;background:#faeeda;color:#854f0b}
+.chev{width:13px;height:13px;stroke:var(--color-text-tertiary);fill:none;stroke-width:2;transition:transform .2s;flex-shrink:0}
+.gauge-area{display:none;padding:0 12px 12px;border-top:0.5px solid var(--color-border-tertiary)}
+.gauge-block{margin-top:10px}
+.glr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:6px}
+.gname{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.gamts{font-size:10px;color:var(--color-text-tertiary);text-align:right}
+.gamts.over{color:#a32d2d;font-weight:500}
+.gtrack{position:relative;height:7px;background:var(--color-background-secondary);border-radius:100px;overflow:visible;margin-bottom:16px}
+.gfill{height:100%;border-radius:100px;position:absolute;top:0;left:0;max-width:100%}
+.gsafe{position:absolute;top:-4px;width:2px;height:15px;background:var(--color-text-secondary);border-radius:1px}
+.gslbl{position:absolute;top:15px;font-size:9px;color:var(--color-text-tertiary);transform:translateX(-50%);white-space:nowrap}
+.gctx{font-size:11px;color:var(--color-text-secondary);line-height:1.5;margin-top:-6px}
+.anno{font-size:10px;color:var(--color-text-info);margin-top:4px}
+
+.legend{margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+.lrow{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.lkey{font-family:var(--font-mono,'Courier New'),monospace;font-size:10px;color:#0c447c;background:var(--color-background-secondary);padding:1px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+@media(prefers-color-scheme:dark){.lkey{color:#85b7eb}}
+</style>
+
+<h2 class="sr-only">Interactive JSON schema explorer for the ingredient health dashboard — shows how each field maps to the visual gauge.</h2>
+
+<div class="layout">
+<div class="panel">
+  <div class="panel-head">Enriched JSON schema — Vitamin B12</div>
+  <div class="json-wrap"><pre
+><span class="c">// ── Top-level identity ──────────────────────────</span>
+{
+  <span class="k">"name"</span>: <span class="s">"Vitamin B12"</span>,
+  <span class="k">"category"</span>: <span class="s">"vitamin"</span>,         <span class="c">// vitamin|mineral|additive|compound|fat|preservative</span>
+  <span class="k">"severity"</span>: <span class="s">"ok"</span>,            <span class="c">// critical|warn|ok|benefit</span>
+  <span class="k">"tag"</span>: <span class="s">"Essential vitamin"</span>,   <span class="c">// 2-4 word badge shown in dashboard</span>
+  <span class="k">"description"</span>: <span class="s">"Water-soluble vitamin for RBC, nerve, DNA."</span>,
+
+  <span class="c">// ── Dosage limits (all values in same unit) ────</span>
+  <span class="k">"dosage"</span>: {
+    <span class="k">"unit"</span>: <span class="s">"mcg/day"</span>,          <span class="c">// canonical unit for ALL numeric fields below</span>
+    <span class="k">"typical_in_product"</span>: <span class="n">6.0</span>,    <span class="c">// actual amount in this specific product</span>
+    <span class="k">"rda"</span>: <span class="n">2.4</span>,                <span class="c">// recommended daily allowance (healthy adult)</span>
+    <span class="k">"safe_upper_limit"</span>: <span class="n">1000</span>,    <span class="c">// ← safe limit marker on the gauge bar</span>
+    <span class="k">"tolerable_upper_limit"</span>: <span class="n">2000</span>, <span class="c">// ← max of gauge bar scale (200% point)</span>
+    <span class="k">"toxicity_threshold"</span>: <span class="v">null</span>,  <span class="c">// null = no known toxicity (like B12)</span>
+    <span class="k">"pct_of_safe_limit"</span>: <span class="n">0.6</span>,    <span class="c">// (typical_in_product / safe_upper_limit) × 100</span>
+    <span class="k">"authority"</span>: <span class="s">"NIH/FDA"</span>,       <span class="c">// source for the limits (WHO|EU|FDA|NIH|EFSA)</span>
+    <span class="k">"special_conditions"</span>: {
+      <span class="k">"pregnancy"</span>: <span class="n">2.6</span>,
+      <span class="k">"lactation"</span>: <span class="n">2.8</span>,
+      <span class="k">"elderly"</span>: <span class="n">2.4</span>
+    }
+  },
+
+  <span class="c">// ── Risk gauges ────────────────────────────────</span>
+  <span class="k">"risks"</span>: [
+    {
+      <span class="k">"label"</span>: <span class="s">"Deficiency risk (vegans/elderly)"</span>,
+      <span class="k">"actual"</span>: <span class="n">6.0</span>,              <span class="c">// amount in product (same unit as dosage.unit)</span>
+      <span class="k">"safe"</span>: <span class="n">1000</span>,              <span class="c">// safe upper limit → marker on gauge</span>
+      <span class="k">"max"</span>: <span class="n">2000</span>,               <span class="c">// 100% of bar width = this value</span>
+      <span class="k">"unit"</span>: <span class="s">"mcg/day"</span>,
+      <span class="k">"pct"</span>: <span class="n">0.6</span>,                <span class="c">// (actual/safe)×100 — drives bar fill width</span>
+      <span class="k">"severity_level"</span>: <span class="s">"low"</span>,    <span class="c">// high|medium|low — drives bar colour</span>
+      <span class="k">"exceeds_safe"</span>: <span class="v">false</span>,      <span class="c">// true = "over" class, red label text</span>
+      <span class="k">"context"</span>: <span class="s">"NIH sets RDA at 2.4 mcg/day. Vegans and over-50s absorb less via intrinsic factor and may need supplements even when dietary intake looks adequate."</span>,
+      <span class="k">"citation"</span>: <span class="s">"https://ods.od.nih.gov/factsheets/VitaminB12-HealthProfessional/"</span>
+    }
+  ],
+
+  <span class="c">// ── Benefit gauges ─────────────────────────────</span>
+  <span class="k">"benefits"</span>: [
+    {
+      <span class="k">"label"</span>: <span class="s">"Red blood cell formation"</span>,
+      <span class="k">"category"</span>: <span class="s">"Red Blood Cells"</span>,  <span class="c">// maps to your existing benefits[].category</span>
+      <span class="k">"actual"</span>: <span class="n">6.0</span>,
+      <span class="k">"safe"</span>: <span class="n">2.4</span>,               <span class="c">// RDA = 100% of benefit</span>
+      <span class="k">"max"</span>: <span class="n">10</span>,                 <span class="c">// scale ceiling for the gauge bar</span>
+      <span class="k">"unit"</span>: <span class="s">"mcg/day"</span>,
+      <span class="k">"pct"</span>: <span class="n">100</span>,                <span class="c">// meeting/exceeding RDA = 100% benefit score</span>
+      <span class="k">"context"</span>: <span class="s">"Prevents megaloblastic anemia by supporting normal RBC maturation. This product provides 250% of the adult RDA in a single serving."</span>,
+      <span class="k">"citation"</span>: <span class="s">"https://ods.od.nih.gov/factsheets/VitaminB12-HealthProfessional/"</span>
+    },
+    {
+      <span class="k">"label"</span>: <span class="s">"Neurological health"</span>,
+      <span class="k">"category"</span>: <span class="s">"Neurological Health"</span>,
+      <span class="k">"actual"</span>: <span class="n">6.0</span>,
+      <span class="k">"safe"</span>: <span class="n">2.4</span>,
+      <span class="k">"max"</span>: <span class="n">10</span>,
+      <span class="k">"unit"</span>: <span class="s">"mcg/day"</span>,
+      <span class="k">"pct"</span>: <span class="n">90</span>,
+      <span class="k">"context"</span>: <span class="s">"Maintains the myelin sheath protecting nerve fibres from damage. Deficiency leads to irreversible neurological deterioration."</span>,
+      <span class="k">"citation"</span>: <span class="s">"https://ods.od.nih.gov/factsheets/VitaminB12-HealthProfessional/"</span>
+    }
+  ],
+
+  <span class="c">// ── Existing fields kept, no changes ───────────</span>
+  <span class="k">"sources"</span>: [
+    <span class="s">"Animal products (meat, fish, eggs, dairy)"</span>,
+    <span class="s">"Fortified plant milks"</span>,
+    <span class="s">"Nutritional yeast"</span>,
+    <span class="s">"Clams and beef liver"</span>
+  ],
+  <span class="k">"risksAndDeficiency"</span>: {
+    <span class="k">"deficiency"</span>: <span class="s">"Fatigue, neuropathy, memory loss, pernicious anemia."</span>,
+    <span class="k">"excess"</span>: <span class="s">"No known toxicity; excess excreted in urine."</span>
+  },
+  <span class="k">"importantNotes"</span>: [
+    <span class="s">"Vegans and older adults at high deficiency risk."</span>,
+    <span class="s">"Absorption requires intrinsic factor from the stomach."</span>
+  ],
+  <span class="k">"citations"</span>: [
+    <span class="s">"https://ods.od.nih.gov/factsheets/VitaminB12-HealthProfessional/"</span>
+  ]
+}</pre></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">Live dashboard preview — how fields render</div>
+  <div class="preview">
+
+    <div class="legend">
+      <div class="lrow"><span class="lkey">typical_in_product</span> actual value shown in the amounts label and fills the bar</div>
+      <div class="lrow"><span class="lkey">safe_upper_limit</span> the vertical marker line on the gauge bar</div>
+      <div class="lrow"><span class="lkey">tolerable_upper_limit</span> the right edge (100%) of the bar scale</div>
+      <div class="lrow"><span class="lkey">pct</span> drives bar fill width: 50 = halfway to safe limit</div>
+      <div class="lrow"><span class="lkey">exceeds_safe</span> turns the amounts label red when true</div>
+      <div class="lrow"><span class="lkey">severity_level</span> green / amber / red bar colour</div>
+    </div>
+
+    <div class="ing-row" id="demo-row" style="border-left:3px solid #639922;border-radius:0">
+      <div class="ing-top" onclick="document.getElementById('demo-row').classList.toggle('open')">
+        <div class="dot" style="background:#639922"></div>
+        <span class="iname">Vitamin B12</span>
+        <span class="tag" style="background:#eaf3de;color:#3b6d11">Essential vitamin</span>
+        <svg class="chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="gauge-area">
+
+        <div style="font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-tertiary);margin:10px 0 6px">Risk gauge</div>
+        <div class="gauge-block">
+          <div class="glr">
+            <span class="gname">Deficiency risk (vegans/elderly)</span>
+            <span class="gamts">In product: <strong>6 mcg/day</strong> &nbsp;|&nbsp; Safe limit: 1000 mcg/day</span>
+          </div>
+          <div class="gtrack">
+            <div class="gfill" style="width:0.3%;background:#639922"></div>
+            <div class="gsafe" style="left:50%"><div class="gslbl">safe limit</div></div>
+          </div>
+          <div class="gctx">NIH sets RDA at 2.4 mcg/day. Vegans and over-50s absorb less and may need supplements even when dietary intake looks adequate.</div>
+          <div class="anno">← bar fills 0.3% of scale (6 ÷ 2000 × 100) — green because pct &lt; 40</div>
+        </div>
+
+        <div style="font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-tertiary);margin:14px 0 6px">Benefit gauges</div>
+        <div class="gauge-block">
+          <div class="glr">
+            <span class="gname">Red blood cell formation</span>
+            <span class="gamts">In product: <strong>6 mcg/day</strong></span>
+          </div>
+          <div class="gtrack">
+            <div class="gfill" style="width:100%;background:#1d9e75"></div>
+          </div>
+          <div class="gctx">Prevents megaloblastic anemia. This product provides 250% of the adult RDA in one serving.</div>
+          <div class="anno">← pct:100 → full bar. No safe-limit marker on benefit gauges.</div>
+        </div>
+
+        <div class="gauge-block">
+          <div class="glr">
+            <span class="gname">Neurological health</span>
+            <span class="gamts">In product: <strong>6 mcg/day</strong></span>
+          </div>
+          <div class="gtrack">
+            <div class="gfill" style="width:90%;background:#1d9e75"></div>
+          </div>
+          <div class="gctx">Maintains the myelin sheath protecting nerve fibres. Deficiency leads to irreversible neurological deterioration.</div>
+        </div>
+
+        <div class="anno" style="margin-top:10px;padding:8px;background:var(--color-background-secondary);border-radius:6px;line-height:1.6">
+          <strong>pct calculation rules:</strong><br>
+          Risks: pct = (actual ÷ safe) × 100 &nbsp;&nbsp;|&nbsp;&nbsp; Benefit: pct = min((actual ÷ rda) × 100, 100)<br>
+          Bar fill width = min(pct ÷ 2, 100)% &nbsp;&nbsp;so 200% pct = full bar (exceeds limit by 2×)
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
