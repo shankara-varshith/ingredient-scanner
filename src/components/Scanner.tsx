@@ -21,6 +21,7 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
   const streamRef = useRef<MediaStream | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -40,6 +41,9 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
   const startCamera = async () => {
     setError(null);
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia not supported");
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: "environment" } 
       });
@@ -49,8 +53,12 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
       }
       setIsCameraActive(true);
     } catch (err: any) {
-      console.error("Camera error:", err);
-      setError("Could not access camera. Please allow camera permissions or use file upload.");
+      console.warn("Camera error, falling back to native input:", err);
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      } else {
+        setError("Could not access camera. Please allow camera permissions or use file upload.");
+      }
     }
   };
 
@@ -206,7 +214,7 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
             </div>
             
             <div>
-              <h2 className="text-3xl font-bold text-slate-800 font-[family-name:var(--font-outfit)] tracking-tight">Scan Ingredients</h2>
+              <h2 className="text-3xl font-bold text-slate-800 font-[family-name:var(--font-inter-tight)] tracking-tight">Scan Ingredients</h2>
               <p className="text-slate-500 mt-2 text-base max-w-xs mx-auto">
                 Use your camera, snap a photo, or drop an image of a product label.
               </p>
@@ -234,6 +242,13 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
         <input
           type="file"
           ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+        <input
+          type="file"
+          ref={cameraInputRef}
           className="hidden"
           accept="image/*"
           capture="environment"

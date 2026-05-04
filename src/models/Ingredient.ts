@@ -2,60 +2,106 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IIngredient extends Document {
   name: string;
+  category: string;
+  severity: "critical" | "warn" | "ok" | "benefit";
+  tag: string;
   description: string;
-  
-  // New UI-focused risk categorization
-  riskLevel: "Critical risk" | "Moderate concern" | "Safe / beneficial" | "Unknown";
-  riskCategory: string; // e.g., "High GI", "Allergen present", "Mostly safe"
-  
-  // Quantitative metric for progress bar
-  metric?: {
-    name: string;      // e.g., "Glycaemic Index", "Sodium Level"
-    actual: number;    // e.g., 70
-    safeLimit: number; // e.g., 55
-    maxScale: number;  // For calculating the progress bar width (e.g. 100)
-    unit: string;      // e.g., "GI", "mg"
-    description: string;
+
+  dosage?: {
+    unit: string;
+    typical_in_product: number;
+    rda?: number;
+    safe_upper_limit?: number;
+    tolerable_upper_limit?: number;
+    toxicity_threshold?: number | null;
+    pct_of_safe_limit?: number;
+    authority?: string;
+    special_conditions?: Record<string, number>;
   };
 
-  benefits: { category: string; description: string }[];
-  sources: string[];
+  risks?: {
+    label: string;
+    actual: number;
+    safe: number;
+    max: number;
+    unit: string;
+    pct: number;
+    severity_level: "high" | "medium" | "low";
+    exceeds_safe: boolean;
+    context: string;
+    citation?: string;
+  }[];
+
+  benefits?: {
+    label: string;
+    category: string;
+    actual: number;
+    safe: number;
+    max: number;
+    unit: string;
+    pct: number;
+    context: string;
+    citation?: string;
+  }[];
+
+  sources?: string[];
   risksAndDeficiency?: { deficiency?: string; excess?: string };
-  rda?: { adult?: string; specialConditions?: string };
   importantNotes?: string[];
   citations?: string[];
 }
 
 const IngredientSchema: Schema<IIngredient> = new Schema({
   name: { type: String, required: true, unique: true },
+  category: { type: String, default: "compound" },
+  severity: { type: String, enum: ["critical", "warn", "ok", "benefit"], default: "ok" },
+  tag: { type: String },
   description: { type: String, required: true },
   
-  riskLevel: { type: String, enum: ["Critical risk", "Moderate concern", "Safe / beneficial", "Unknown"], default: "Unknown" },
-  riskCategory: { type: String, default: "Unknown" },
-  
-  metric: {
-    name: { type: String },
-    actual: { type: Number },
-    safeLimit: { type: Number },
-    maxScale: { type: Number },
+  dosage: {
     unit: { type: String },
-    description: { type: String },
+    typical_in_product: { type: Number },
+    rda: { type: Number },
+    safe_upper_limit: { type: Number },
+    tolerable_upper_limit: { type: Number },
+    toxicity_threshold: { type: Number },
+    pct_of_safe_limit: { type: Number },
+    authority: { type: String },
+    special_conditions: { type: Map, of: Number },
   },
+
+  risks: [
+    {
+      label: { type: String },
+      actual: { type: Number },
+      safe: { type: Number },
+      max: { type: Number },
+      unit: { type: String },
+      pct: { type: Number },
+      severity_level: { type: String, enum: ["high", "medium", "low"] },
+      exceeds_safe: { type: Boolean },
+      context: { type: String },
+      citation: { type: String },
+    },
+  ],
 
   benefits: [
     {
+      label: { type: String },
       category: { type: String },
-      description: { type: String },
+      actual: { type: Number },
+      safe: { type: Number },
+      max: { type: Number },
+      unit: { type: String },
+      pct: { type: Number },
+      context: { type: String },
+      citation: { type: String },
     },
   ],
+
   sources: [{ type: String }],
   risksAndDeficiency: {
     deficiency: { type: String },
     excess: { type: String },
-  },
-  rda: {
-    adult: { type: String },
-    specialConditions: { type: String },
   },
   importantNotes: [{ type: String }],
   citations: [{ type: String }],
@@ -63,6 +109,6 @@ const IngredientSchema: Schema<IIngredient> = new Schema({
   timestamps: true,
 });
 
-const Ingredient: Model<IIngredient> = mongoose.models.Ingredient || mongoose.model<IIngredient>('Ingredient', IngredientSchema);
+const Ingredient: Model<IIngredient> = mongoose.models.Ingredient || mongoose.model<IIngredient>('Ingredient', IngredientSchema, 'ingredients_new');
 
 export default Ingredient;
