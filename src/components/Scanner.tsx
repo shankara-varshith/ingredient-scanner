@@ -159,8 +159,8 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
         onDragOver={!isCameraActive && !loading ? handleDragOver : undefined}
         onDragLeave={!isCameraActive && !loading ? handleDragLeave : undefined}
         onDrop={!isCameraActive && !loading ? handleDrop : undefined}
-        className={`relative overflow-hidden group bg-white/40 backdrop-blur-3xl p-10 rounded-[2rem] border-2 transition-all duration-500 ease-out shadow-[0_8px_40px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_60px_rgb(0,0,0,0.12)]
-          ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-white/60'}
+        className={`relative overflow-hidden group bg-white/5 backdrop-blur-3xl p-10 rounded-[2rem] border-2 transition-all duration-500 ease-out shadow-[0_8px_40px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_60px_rgb(0,0,0,0.12)]
+          ${isDragging ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]' : 'border-white/10'}
         `}
       >
         {/* Animated Background Mesh */}
@@ -168,14 +168,14 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
         
         {loading && previewImage ? (
           // Scanning State
-          <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="absolute inset-0 z-10 bg-[#0B0B0B]/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
             <div className="relative w-48 h-48 rounded-2xl overflow-hidden shadow-2xl mb-6 border border-slate-200">
               <img src={previewImage} alt="Scanning" className="w-full h-full object-cover" />
               {/* Laser Animation */}
               <div className="absolute top-0 left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,1)] animate-[scan_2s_ease-in-out_infinite]"></div>
             </div>
-            <div className="flex items-center gap-3 text-indigo-700 font-semibold text-lg">
-              <Sparkles className="w-5 h-5 animate-pulse text-indigo-500" />
+            <div className="flex items-center gap-3 text-indigo-400 font-semibold text-lg">
+              <Sparkles className="w-5 h-5 animate-pulse text-indigo-400" />
               <span className="animate-pulse">AI is reading the label...</span>
             </div>
           </div>
@@ -214,8 +214,8 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
             </div>
             
             <div>
-              <h2 className="text-3xl font-bold text-slate-800 font-[family-name:var(--font-inter-tight)] tracking-tight">Scan Ingredients</h2>
-              <p className="text-slate-500 mt-2 text-base max-w-xs mx-auto">
+              <h2 className="text-3xl font-bold text-white font-[family-name:var(--font-inter-tight)] tracking-tight">Scan Ingredients</h2>
+              <p className="text-slate-400 mt-2 text-base max-w-xs mx-auto">
                 Use your camera, snap a photo, or drop an image of a product label.
               </p>
             </div>
@@ -227,11 +227,11 @@ export default function Scanner({ onAnalyzeComplete }: ScannerProps) {
               >
                 <Camera className="mr-2 h-5 w-5" /> Use Camera
               </Button>
-              <div className="text-slate-400 text-sm font-medium">OR</div>
+              <div className="text-slate-500 text-sm font-medium">OR</div>
               <Button 
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full sm:w-auto rounded-full px-8 h-12 text-base font-semibold shadow-sm bg-white border-slate-200 hover:bg-slate-50 text-slate-700 transition-all hover:-translate-y-0.5"
+                className="w-full sm:w-auto rounded-full px-8 h-12 text-base font-semibold shadow-sm bg-white/5 border-white/10 hover:bg-white/10 text-white transition-all hover:-translate-y-0.5"
               >
                 <Upload className="mr-2 h-5 w-5" /> Browse Files
               </Button>
