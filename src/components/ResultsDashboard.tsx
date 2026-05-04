@@ -21,7 +21,7 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
   const [error, setError] = useState<string | null>(null);
 
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<"All" | "Risks" | "Benefits">("All");
+  const [activeTab, setActiveTab] = useState<"All" | "Risks" | "Moderate" | "Benefits">("All");
 
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
@@ -81,18 +81,29 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
   let warnCount = 0;
   let safeCount = 0;
 
-  matched.forEach(ing => {
+  const getIngredientCategory = (ing: any): "Critical" | "Moderate" | "Safe" => {
     const isCritical = (ing.risks || []).some((r: any) => r.severity_level === "high" || r.exceeds_safe) || ing.severity === "critical";
-    const isWarn = !isCritical && ((ing.risks || []).some((r: any) => r.severity_level === "medium") || ing.severity === "warn");
-    const isSafe = !isCritical && !isWarn && (
-      ((ing.risks || []).every((r: any) => r.severity_level === "low") && (ing.benefits || []).length > 0) || 
-      ing.severity === "ok" || ing.severity === "benefit"
-    );
+    if (isCritical) return "Critical";
 
-    if (isCritical) criticalCount++;
-    else if (isWarn) warnCount++;
-    else if (isSafe) safeCount++;
-    else safeCount++; // fallback
+    const hasRisks = (ing.risks || []).length > 0;
+    const hasBenefits = (ing.benefits || []).length > 0;
+    const hasMediumRisk = (ing.risks || []).some((r: any) => r.severity_level === "medium") || ing.severity === "warn";
+
+    if (hasMediumRisk) return "Moderate";
+    if (hasRisks && hasBenefits) return "Moderate";
+    
+    if (!hasRisks && hasBenefits) return "Safe";
+    if (ing.severity === "ok" || ing.severity === "benefit") return "Safe";
+
+    return "Safe";
+  };
+
+  const categorizedMatched = matched.map(ing => {
+    const category = getIngredientCategory(ing);
+    if (category === "Critical") criticalCount++;
+    else if (category === "Moderate") warnCount++;
+    else safeCount++;
+    return { ...ing, category };
   });
 
   const getSeverityDotColor = (severity: string) => {
@@ -195,9 +206,10 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
     );
   };
 
-  const filteredItems = matched.filter(item => {
-    if (activeTab === "Risks") return item.risks && item.risks.length > 0;
-    if (activeTab === "Benefits") return item.benefits && item.benefits.length > 0;
+  const filteredItems = categorizedMatched.filter(item => {
+    if (activeTab === "Risks") return item.category === "Critical";
+    if (activeTab === "Moderate") return item.category === "Moderate";
+    if (activeTab === "Benefits") return item.category === "Safe";
     return true;
   });
 
@@ -297,17 +309,26 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
 
           {/* STAGE 2 — Summary tiles */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#FAFAF7] rounded-[14px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-[#E03A3E]">
+            <div 
+              onClick={() => setActiveTab("Risks")}
+              className={`bg-[#FAFAF7] rounded-[14px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-[#E03A3E] cursor-pointer transition-all hover:-translate-y-1 ${activeTab === "Risks" ? "ring-2 ring-offset-2 ring-offset-[#0B0B0B] ring-[#E03A3E]" : ""}`}
+            >
               <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-1">Critical Risk</p>
               <p className="text-5xl font-semibold text-[#E03A3E] font-[family-name:var(--font-inter-tight)] tracking-tight">{criticalCount}</p>
             </div>
             
-            <div className="bg-[#FAFAF7] rounded-[14px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-[#E89B2C]">
+            <div 
+              onClick={() => setActiveTab("Moderate")}
+              className={`bg-[#FAFAF7] rounded-[14px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-[#E89B2C] cursor-pointer transition-all hover:-translate-y-1 ${activeTab === "Moderate" ? "ring-2 ring-offset-2 ring-offset-[#0B0B0B] ring-[#E89B2C]" : ""}`}
+            >
               <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-1">Moderate Concern</p>
               <p className="text-5xl font-semibold text-[#E89B2C] font-[family-name:var(--font-inter-tight)] tracking-tight">{warnCount}</p>
             </div>
 
-            <div className="bg-[#FAFAF7] rounded-[14px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-[#3DAA5C]">
+            <div 
+              onClick={() => setActiveTab("Benefits")}
+              className={`bg-[#FAFAF7] rounded-[14px] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-[#3DAA5C] cursor-pointer transition-all hover:-translate-y-1 ${activeTab === "Benefits" ? "ring-2 ring-offset-2 ring-offset-[#0B0B0B] ring-[#3DAA5C]" : ""}`}
+            >
               <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-1">Safe / Beneficial</p>
               <p className="text-5xl font-semibold text-[#3DAA5C] font-[family-name:var(--font-inter-tight)] tracking-tight">{safeCount}</p>
             </div>
@@ -315,7 +336,7 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
 
           {/* STAGE 3 — Filter tabs */}
           <div className="flex gap-6 border-b border-white/10 pt-4">
-            {["Risks", "Benefits", "All"].map(tab => (
+            {["Risks", "Moderate", "Benefits", "All"].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
