@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Check, Edit2, AlertCircle, ChevronDown, HeartPulse, ShieldAlert, AlertTriangle, Info, ChevronRight, Activity, Beaker, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { classifyIngredient } from "@/utils/bucketClassifier";
 
 interface ResultsDashboardProps {
   initialData: { productType: string; ingredients: string[] };
@@ -81,25 +82,10 @@ export default function ResultsDashboard({ initialData, onReset }: ResultsDashbo
   let warnCount = 0;
   let safeCount = 0;
 
-  const getIngredientCategory = (ing: any): "Critical" | "Moderate" | "Safe" => {
-    const isCritical = (ing.risks || []).some((r: any) => r.severity_level === "high" || r.exceeds_safe) || ing.severity === "critical";
-    if (isCritical) return "Critical";
-
-    const hasRisks = (ing.risks || []).length > 0;
-    const hasBenefits = (ing.benefits || []).length > 0;
-    const hasMediumRisk = (ing.risks || []).some((r: any) => r.severity_level === "medium") || ing.severity === "warn";
-
-    if (hasMediumRisk) return "Moderate";
-    if (hasRisks && hasBenefits) return "Moderate";
-    
-    if (!hasRisks && hasBenefits) return "Safe";
-    if (ing.severity === "ok" || ing.severity === "benefit") return "Safe";
-
-    return "Safe";
-  };
-
   const categorizedMatched = matched.map(ing => {
-    const category = getIngredientCategory(ing);
+    // For now we do not parse dynamic extracted quantity from the OCR output.
+    // It will fall back to record.dosage.typical_in_product inside classifyIngredient.
+    const category = classifyIngredient(ing);
     if (category === "Critical") criticalCount++;
     else if (category === "Moderate") warnCount++;
     else safeCount++;
