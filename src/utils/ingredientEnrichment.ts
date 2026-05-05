@@ -23,7 +23,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-2.5-pro";
 const ALLOWED_SEVERITY = ["benefit", "ok", "warn", "critical"] as const;
 const ALLOWED_RISK_LEVEL = ["low", "medium", "high"] as const;
 
@@ -471,11 +471,26 @@ function stripJsonFence(text: string): string {
 }
 
 async function callGeminiForJson(prompt: string): Promise<any> {
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
-  });
+  let model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const contents = [{ role: "user", parts: [{ text: prompt }] }] as any;
+  const generationConfig = { responseMimeType: "application/json", temperature: 0.2 };
+
+  let result;
+  try {
+    result = await model.generateContent({ contents, generationConfig });
+  } catch (error: any) {
+    const fallbackKey = process.env.GEMINI_API_KEY_FALLBACK;
+    const isRateLimit = error?.status === 429 || error?.status === 503 || error?.message?.includes("quota") || error?.message?.includes("429");
+    if (isRateLimit && fallbackKey) {
+      console.warn("[enrichment] Primary key limit reached, switching to fallback...");
+      const fallbackGenAI = new GoogleGenerativeAI(fallbackKey);
+      model = fallbackGenAI.getGenerativeModel({ model: MODEL_NAME });
+      result = await model.generateContent({ contents, generationConfig });
+    } else {
+      throw error;
+    }
+  }
+
   const raw = result.response.text();
   const cleaned = stripJsonFence(raw);
   return JSON.parse(cleaned);

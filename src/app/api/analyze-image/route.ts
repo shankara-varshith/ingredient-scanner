@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    let model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
     const prompt = `
       Analyze this image, which is a product label. 
@@ -29,25 +29,40 @@ export async function POST(req: NextRequest) {
       }
     `;
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                data: base64Image,
-                mimeType: file.type || "image/jpeg",
-              },
+    const contents = [
+      {
+        role: "user",
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              data: base64Image,
+              mimeType: file.type || "image/jpeg",
             },
-          ],
-        },
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
+          },
+        ],
       },
-    });
+    ] as any;
+
+    const generationConfig = {
+      responseMimeType: "application/json",
+    };
+
+    let result;
+    try {
+      result = await model.generateContent({ contents, generationConfig });
+    } catch (error: any) {
+      const fallbackKey = process.env.GEMINI_API_KEY_FALLBACK;
+      const isRateLimit = error?.status === 429 || error?.status === 503 || error?.message?.includes("quota") || error?.message?.includes("429");
+      if (isRateLimit && fallbackKey) {
+        console.warn("Primary Gemini key limit reached, switching to fallback...");
+        const fallbackGenAI = new GoogleGenerativeAI(fallbackKey);
+        model = fallbackGenAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        result = await model.generateContent({ contents, generationConfig });
+      } else {
+        throw error;
+      }
+    }
 
     const textResponse = result.response.text();
     let cleanedJson = textResponse;
