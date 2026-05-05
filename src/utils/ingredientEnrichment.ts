@@ -23,7 +23,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = "gemini-1.5-flash";
 const ALLOWED_SEVERITY = ["benefit", "ok", "warn", "critical"] as const;
 const ALLOWED_RISK_LEVEL = ["low", "medium", "high"] as const;
 
