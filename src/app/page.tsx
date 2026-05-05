@@ -3,59 +3,116 @@
 import { useState } from "react";
 import Scanner from "@/components/Scanner";
 import ResultsDashboard from "@/components/ResultsDashboard";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Leaf, ScanLine, ShieldCheck, Zap } from "lucide-react";
 
 export default function Home() {
   const [analysisData, setAnalysisData] = useState<{ productType: string; ingredients: string[] } | null>(null);
 
   return (
-    <main className="min-h-screen bg-[#0B0B0B] text-slate-100 selection:bg-indigo-900 selection:text-indigo-100 relative overflow-hidden">
-      {/* Background Mesh/Blobs */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '8s' }}></div>
-        <div className="absolute top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-violet-900/20 blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '12s' }}></div>
-        <div className="absolute -bottom-[20%] left-[20%] w-[50%] h-[50%] rounded-full bg-blue-900/20 blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '10s' }}></div>
-      </div>
-      
-      {/* Noise Overlay */}
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none z-0"></div>
-      
-      <div className="container mx-auto px-4 py-12 md:py-24 relative z-10 flex flex-col items-center justify-start min-h-screen">
-        
-        {/* Header */}
-        <div className="text-center mb-12 md:mb-20 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000 max-w-3xl mx-auto pt-8">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm text-indigo-300 text-sm font-semibold mb-2">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            AI-Powered Health Analysis
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white font-[family-name:var(--font-inter-tight)] leading-[1.1]">
-            Know What's <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400 drop-shadow-sm">Really Inside.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-slate-400 font-medium leading-relaxed">
-            Scan your product labels instantly to extract ingredients, classify product types, and reveal the hidden health impacts you deserve to know.
-          </p>
-        </div>
+    <main className="min-h-screen bg-[#050A07] text-slate-100 selection:bg-emerald-900 selection:text-emerald-100 relative overflow-hidden">
 
-        {/* Dynamic Content */}
+      {/* ── Background ambient blobs ─────────────────────────── */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0" aria-hidden>
+        <div
+          className="absolute -top-[25%] -left-[15%] w-[55%] h-[55%] rounded-full"
+          style={{
+            background: "radial-gradient(ellipse at center, rgba(0,185,90,0.12) 0%, transparent 70%)",
+            animation: "float-slow 14s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute top-[30%] -right-[20%] w-[60%] h-[60%] rounded-full"
+          style={{
+            background: "radial-gradient(ellipse at center, rgba(0,100,180,0.08) 0%, transparent 70%)",
+            animation: "float-medium 18s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute -bottom-[20%] left-[15%] w-[55%] h-[55%] rounded-full"
+          style={{
+            background: "radial-gradient(ellipse at center, rgba(0,200,120,0.07) 0%, transparent 70%)",
+            animation: "float-slow 20s ease-in-out infinite reverse",
+          }}
+        />
+
+        {/* Subtle grid */}
+        <div
+          className="absolute inset-0 opacity-[0.025]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)`,
+            backgroundSize: "40px 40px",
+          }}
+        />
+      </div>
+
+      <div className="container mx-auto px-4 py-12 md:py-20 relative z-10 flex flex-col items-center justify-start min-h-screen">
+
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        {!analysisData && (
+          <div className="text-center mb-12 md:mb-16 space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700 max-w-2xl mx-auto pt-6">
+
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/8 text-emerald-400 text-xs font-semibold tracking-wide uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              AI-Powered Health Analysis
+            </div>
+
+            {/* Headline */}
+            <h1 className="text-5xl md:text-[4.25rem] font-black tracking-tight leading-[1.08] font-[family-name:var(--font-inter-tight)]">
+              Know What's{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-green-300 to-teal-400">
+                  Really Inside.
+                </span>
+                {/* Underline glow */}
+                <span
+                  className="absolute -bottom-1 left-0 right-0 h-[3px] rounded-full opacity-60"
+                  style={{ background: "linear-gradient(90deg, #34d399, #2dd4bf)" }}
+                  aria-hidden
+                />
+              </span>
+            </h1>
+
+            {/* Sub-headline */}
+            <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-lg mx-auto">
+              Scan any product label — food, cosmetics, supplements — and instantly uncover every ingredient's health impact.
+            </p>
+
+            {/* Trust signals */}
+            <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 pt-2">
+              {[
+                { icon: ScanLine, label: "Instant OCR extraction" },
+                { icon: ShieldCheck, label: "Evidence-based ratings" },
+                { icon: Leaf, label: "Food · Beauty · Supplements" },
+                { icon: Zap, label: "Powered by Gemini AI" },
+              ].map(({ icon: Icon, label }) => (
+                <span key={label} className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
+                  <Icon className="w-3.5 h-3.5 text-emerald-600" />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Dynamic content area ─────────────────────────────── */}
         <div className="w-full transition-all duration-700 ease-in-out relative z-20">
           {!analysisData ? (
             <Scanner onAnalyzeComplete={setAnalysisData} />
           ) : (
-            <ResultsDashboard 
-              initialData={analysisData} 
-              onReset={() => setAnalysisData(null)} 
+            <ResultsDashboard
+              initialData={analysisData}
+              onReset={() => setAnalysisData(null)}
             />
           )}
         </div>
-        
-        {/* Footer Area */}
+
+        {/* ── Footer ───────────────────────────────────────────── */}
         {!analysisData && (
-          <div className="mt-20 text-center animate-in fade-in duration-1000 delay-500">
-            <p className="text-sm font-medium text-slate-500 flex items-center justify-center gap-2">
-              Powered by Gemini AI <ArrowRight className="w-4 h-4" />
-            </p>
-          </div>
+          <p className="mt-16 text-xs text-slate-600 text-center animate-in fade-in duration-700 delay-500">
+            For informational purposes only. Not a substitute for medical advice.
+          </p>
         )}
       </div>
     </main>
