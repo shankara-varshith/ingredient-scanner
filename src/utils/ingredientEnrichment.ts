@@ -482,9 +482,9 @@ async function callGeminiForJson(prompt: string): Promise<any> {
     const fallbackKey = process.env.GEMINI_API_KEY_FALLBACK;
     const isRateLimit = error?.status === 429 || error?.status === 503 || error?.message?.includes("quota") || error?.message?.includes("429");
     if (isRateLimit && fallbackKey) {
-      console.warn("[enrichment] Primary key limit reached, switching to fallback...");
+      console.warn("[enrichment] Primary key limit reached, switching to fallback (gemini-2.5-flash)...");
       const fallbackGenAI = new GoogleGenerativeAI(fallbackKey);
-      model = fallbackGenAI.getGenerativeModel({ model: MODEL_NAME });
+      model = fallbackGenAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       result = await model.generateContent({ contents, generationConfig });
     } else {
       throw error;
