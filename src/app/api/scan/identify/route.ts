@@ -3,9 +3,8 @@ import dbConnect from "@/lib/mongodb";
 import Ingredient from "@/models/Ingredient";
 import IngredientAlias from "@/models/IngredientAlias";
 import { levenshteinDistance } from "@/utils/levenshtein";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { enrichUnmatchedIngredients } from "@/utils/ingredientEnrichment";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
@@ -22,11 +21,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch all ingredients and aliases once since the collection is small
+    // Fetch all ingredients and aliases once since the collection is small.
     const allIngredients = await Ingredient.find({}).lean();
     const allAliases = await IngredientAlias.find({}).lean();
 
-    const matched: any[] = [];
+    type MatchedRow = Record<string, unknown> & {
+      raw: string;
+      matched_name: string;
+      id: string;
+    };
+    const matched: MatchedRow[] = [];
     let unmatched: string[] = [];
     const matchedNamesSet = new Set<string>();
 
@@ -46,8 +50,8 @@ export async function POST(req: NextRequest) {
 
       // 3. Contains match
       if (!found) {
-        found = allIngredients.find(ing => 
-          ing.name.toLowerCase().includes(rawLower) || 
+        found = allIngredients.find(ing =>
+          ing.name.toLowerCase().includes(rawLower) ||
           rawLower.includes(ing.name.toLowerCase())
         );
       }
@@ -60,26 +64,25 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // If still not found, try alias fuzzy/contains (optional, but good)
+      // 5. Alias fuzzy / contains
       if (!found) {
-         const aliasMatch = allAliases.find(alias => 
-            levenshteinDistance(alias.alias.toLowerCase(), rawLower) <= 2 ||
-            alias.alias.toLowerCase().includes(rawLower) ||
-            rawLower.includes(alias.alias.toLowerCase())
-         );
-         if (aliasMatch) {
-           found = allIngredients.find(ing => ing.name === aliasMatch.matched_name);
-         }
+        const aliasMatch = allAliases.find(alias =>
+          levenshteinDistance(alias.alias.toLowerCase(), rawLower) <= 2 ||
+          alias.alias.toLowerCase().includes(rawLower) ||
+          rawLower.includes(alias.alias.toLowerCase())
+        );
+        if (aliasMatch) {
+          found = allIngredients.find(ing => ing.name === aliasMatch.matched_name);
+        }
       }
 
       if (found) {
-        // Prevent duplicate results if multiple raw tokens map to the same ingredient
         if (!matchedNamesSet.has(found.name)) {
           matched.push({
             raw,
             matched_name: found.name,
-            id: found._id.toString(),
-            ...found // return all fields from the new schema
+            id: String(found._id),
+            ...found, // return all fields from the new schema
           });
           matchedNamesSet.add(found.name);
         }
@@ -88,136 +91,75 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Try to auto-generate any remaining unmatched ingredients via Gemini
+    /* ──────────────────────────────────────────────────────────────────── */
+    /* Auto-enrichment for unmatched ingredients via Gemini                 */
+    /*                                                                      */
+    /* The enrichment helper handles validation, retries and field-          */
+    /* completion internally — this route only persists the result.          */
+    /* ──────────────────────────────────────────────────────────────────── */
+
     if (unmatched.length > 0) {
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const prompt = `
-You are a scientific expert on food and cosmetic ingredients.
-I have a list of unmatched ingredients from an OCR scan: ${JSON.stringify(unmatched)}.
-For each real ingredient in this list, generate a detailed profile according to the exact JSON schema provided below.
-Return ONLY a valid JSON array containing the newly generated ingredient objects. Do not include markdown codeblocks or any other text.
-If an item is not a real ingredient or is too ambiguous, simply skip it.
+        const generated = await enrichUnmatchedIngredients(unmatched);
 
-Schema for each ingredient (must strictly follow this):
-{
-  "name": "Proper Name",
-  "category": "category string (e.g. vitamin, preservative, etc)",
-  "severity": "benefit" | "ok" | "warn" | "critical",
-  "tag": "Short tag (e.g. Essential vitamin, Artificial color)",
-  "description": "Short description",
-  "dosage": {
-    "unit": "mcg/day, mg/day, g/day, %, etc",
-    "typical_in_product": 0,
-    "rda": 0,
-    "safe_upper_limit": 0,
-    "tolerable_upper_limit": 0,
-    "toxicity_threshold": null,
-    "pct_of_safe_limit": 0,
-    "authority": "NIH/FDA/EFSA/etc",
-    "special_conditions": { "pregnancy": 0 }
-  },
-  "risks": [
-    {
-      "label": "Risk name",
-      "actual": 0,
-      "safe": 0,
-      "max": 0,
-      "unit": "unit",
-      "pct": 0,
-      "severity_level": "low" | "medium" | "high",
-      "exceeds_safe": false,
-      "context": "Context description",
-      "citation": "URL"
-    }
-  ],
-  "benefits": [
-    {
-      "label": "Benefit name",
-      "category": "Benefit category",
-      "actual": 0,
-      "safe": 0,
-      "max": 0,
-      "unit": "unit",
-      "pct": 0,
-      "context": "Context description",
-      "citation": "URL"
-    }
-  ],
-  "sources": ["Source 1", "Source 2"],
-  "risksAndDeficiency": {
-    "deficiency": "Deficiency details",
-    "excess": "Excess details"
-  },
-  "importantNotes": ["Note 1"],
-  "citations": ["URL"]
-}
-        `;
+        for (const newIng of generated) {
+          try {
+            const savedIng = await Ingredient.findOneAndUpdate(
+              { name: newIng.name },
+              { $set: newIng },
+              { upsert: true, new: true, runValidators: true }
+            );
 
-        const result = await model.generateContent({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
-        });
-        
-        const textResponse = result.response.text();
-        let cleanedJson = textResponse;
-        
-        // Remove markdown tags if they are still present
-        const jsonMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedJson = jsonMatch[1];
-        } else {
-          cleanedJson = cleanedJson.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        }
+            if (!savedIng) continue;
 
-        const newlyGeneratedIngredients = JSON.parse(cleanedJson);
+            // Map back to the closest raw OCR token so the UI can pair them.
+            const lowerName = newIng.name.toLowerCase();
+            const correspondingRaw =
+              unmatched.find(u => {
+                const ul = u.toLowerCase();
+                return (
+                  lowerName.includes(ul) ||
+                  ul.includes(lowerName) ||
+                  levenshteinDistance(ul, lowerName) <= 3
+                );
+              }) || newIng.name;
 
-        if (Array.isArray(newlyGeneratedIngredients) && newlyGeneratedIngredients.length > 0) {
-          for (const newIng of newlyGeneratedIngredients) {
-            delete newIng._id; // Ensure we don't try to write an invalid/existing ID
-            try {
-              // Upsert to handle unique name constraints safely
-              const savedIng = await Ingredient.findOneAndUpdate(
-                { name: newIng.name },
-                { $set: newIng },
-                { upsert: true, new: true, runValidators: true }
-              );
-              
-              // Map back to corresponding raw token
-              const correspondingRaw = unmatched.find(u => 
-                newIng.name.toLowerCase().includes(u.toLowerCase()) || 
-                u.toLowerCase().includes(newIng.name.toLowerCase()) ||
-                levenshteinDistance(u.toLowerCase(), newIng.name.toLowerCase()) <= 3
-              ) || newIng.name;
-
+            if (!matchedNamesSet.has(savedIng.name)) {
               matched.push({
                 raw: correspondingRaw,
                 matched_name: savedIng.name,
-                id: savedIng._id.toString(),
-                ...savedIng.toObject()
+                id: String(savedIng._id),
+                ...savedIng.toObject(),
+                _autoGenerated: true,
               });
-              
-              // Remove handled token from unmatched list
-              unmatched = unmatched.filter(u => u !== correspondingRaw);
-            } catch (err) {
-              console.error("Failed to save newly generated ingredient:", err);
+              matchedNamesSet.add(savedIng.name);
             }
+
+            // Remove the handled token from the unmatched list.
+            unmatched = unmatched.filter(u => u !== correspondingRaw);
+          } catch (saveErr) {
+            console.error(
+              "[identify] Failed to persist enriched ingredient:",
+              newIng.name,
+              saveErr
+            );
           }
         }
       } catch (err) {
-        console.error("Failed to generate missing ingredients via Gemini:", err);
+        console.error("[identify] Gemini enrichment failed:", err);
       }
     }
 
     return NextResponse.json({
       extracted_ingredients,
       matched,
-      unmatched
+      unmatched,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error identifying ingredients:", error);
+    const details = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to identify ingredients", details: error.message },
+      { error: "Failed to identify ingredients", details },
       { status: 500 }
     );
   }
