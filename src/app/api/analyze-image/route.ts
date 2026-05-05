@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    let model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    let model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Analyze this image, which is a product label. 
