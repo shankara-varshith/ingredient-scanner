@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import Cropper from "react-easy-crop";
-import type { Area } from "react-easy-crop";
 import {
   Camera, Upload, Sparkles, AlertCircle, X, Aperture, ScanLine,
-  Crop, Check, RotateCcw, ZoomIn, ZoomOut,
+  Crop, Check, RotateCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getCroppedImageBlob, type PixelCrop } from "@/utils/cropImage";
+import PerspectiveCropper, { type Quad } from "./PerspectiveCropper";
 
 interface ScannerOCRProps {
   onAnalyzeComplete: (data: { productType: string; ingredients: string[] }) => void;
@@ -24,9 +22,7 @@ export default function ScannerOCR({ onAnalyzeComplete }: ScannerOCRProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   // Crop state
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<PixelCrop | null>(null);
+  const [quadCoords, setQuadCoords] = useState<Quad | null>(null);
 
   // Drag-and-drop
   const [isDragging, setIsDragging] = useState(false);
@@ -81,9 +77,7 @@ export default function ScannerOCR({ onAnalyzeComplete }: ScannerOCRProps) {
 
   const enterCropMode = (src: string) => {
     setImageSrc(src);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedAreaPixels(null);
+    setQuadCoords(null);
     setPhase("crop");
   };
 
@@ -96,21 +90,23 @@ export default function ScannerOCR({ onAnalyzeComplete }: ScannerOCRProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const onCropComplete = useCallback((_: Area, pixels: Area) => {
-    setCroppedAreaPixels(pixels);
-  }, []);
+
 
   /* ── Submit cropped image ───────────────────────────────────────────── */
 
   const handleDone = async () => {
-    if (!imageSrc || !croppedAreaPixels) return;
+    if (!imageSrc || !quadCoords) return;
     setPhase("analyzing");
     setError(null);
 
     try {
-      const blob = await getCroppedImageBlob(imageSrc, croppedAreaPixels);
+      // Send original uncropped image and the 4 points
+      const res = await fetch(imageSrc);
+      const blob = await res.blob();
+      
       const formData = new FormData();
-      formData.append("image", blob, "cropped-ingredients.jpg");
+      formData.append("image", blob, "ingredients.jpg");
+      formData.append("coordinates", JSON.stringify(quadCoords.map(p => [p.x, p.y])));
 
       const response = await fetch("/api/analyze-image-ocr", {
         method: "POST",
@@ -139,7 +135,7 @@ export default function ScannerOCR({ onAnalyzeComplete }: ScannerOCRProps) {
   const handleReset = () => {
     stopCamera();
     setImageSrc(null);
-    setCroppedAreaPixels(null);
+    setQuadCoords(null);
     setError(null);
     setPhase("idle");
   };
@@ -184,50 +180,11 @@ export default function ScannerOCR({ onAnalyzeComplete }: ScannerOCRProps) {
           </div>
 
           {/* Cropper area */}
-          <div className="relative w-full" style={{ height: "420px" }}>
-            <Cropper
-              image={imageSrc}
-              crop={crop}
-              zoom={zoom}
-              aspect={undefined}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
-              cropShape="rect"
-              showGrid
-              style={{
-                containerStyle: { background: "#050A07" },
-                cropAreaStyle: { border: "2px solid rgba(0,220,130,0.7)", borderRadius: "12px" },
-              }}
+          <div className="relative w-full" style={{ height: "460px" }}>
+            <PerspectiveCropper 
+              imageSrc={imageSrc} 
+              onCoordinatesChange={setQuadCoords} 
             />
-          </div>
-
-          {/* Zoom controls */}
-          <div className="flex items-center justify-center gap-4 px-5 py-2 border-t border-white/8">
-            <button
-              onClick={() => setZoom(z => Math.max(1, z - 0.2))}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 transition-colors"
-              aria-label="Zoom out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <input
-              type="range"
-              min={1}
-              max={4}
-              step={0.05}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-32 h-1 rounded-full appearance-none bg-white/10 accent-emerald-500"
-              aria-label="Zoom level"
-            />
-            <button
-              onClick={() => setZoom(z => Math.min(4, z + 0.2))}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 transition-colors"
-              aria-label="Zoom in"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
           </div>
 
           {/* Action bar */}

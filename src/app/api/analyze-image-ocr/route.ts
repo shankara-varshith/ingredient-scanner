@@ -24,9 +24,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
-    // Forward the image to the Python OCR service
+    // Forward the image and optional coordinates to the Python OCR service
     const ocrForm = new FormData();
     ocrForm.append("image", file);
+    
+    const coordinates = formData.get("coordinates") as string;
+    if (coordinates) {
+      ocrForm.append("coordinates", coordinates);
+    }
 
     let ocrResponse: Response;
     try {
