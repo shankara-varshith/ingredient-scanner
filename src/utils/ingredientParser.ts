@@ -76,12 +76,9 @@ function splitIngredients(text: string): string[] {
     }
   }
 
-  // Decide delimiter
-  const commaCount = (body.match(/,/g) || []).length;
-  const items =
-    commaCount >= 2
-      ? body.split(",")
-      : body.split(/\n+/);
+  // Decide delimiter: split by commas, semicolons, OR newlines.
+  // This handles cases where OCR returns multi-line text where some lines lack commas.
+  const items = body.split(/[,;\n]+/);
 
   return items
     .map((s) => s.trim())
