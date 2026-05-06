@@ -125,8 +125,8 @@ async def extract_text(
                 logger.warning("Failed to apply perspective transform: %s", e)
 
         reader = get_reader()
-        # detail=0 returns a simple list of text strings, paragraph=True groups them nicely
-        results = reader.readtext(img_np, detail=0, paragraph=True)
+        # detail=0 returns a simple list of text strings, paragraph=False returns them line by line
+        results = reader.readtext(img_np, detail=0, paragraph=False)
 
         # Join the grouped text with newlines to preserve spatial vertical separation
         full_text = "\n".join(results)
