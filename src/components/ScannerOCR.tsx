@@ -51,13 +51,18 @@ export default function ScannerOCR({ onAnalyzeComplete }: ScannerOCRProps) {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("getUserMedia not supported");
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
       setPhase("camera");
     } catch {
       if (cameraInputRef.current) cameraInputRef.current.click();
       else setError("Could not access camera. Please allow permissions or use file upload.");
     }
   };
+
+  useEffect(() => {
+    if (phase === "camera" && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [phase]);
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
